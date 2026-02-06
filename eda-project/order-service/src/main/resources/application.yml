@@ -1,0 +1,31 @@
+server:
+  port: 8081
+
+spring:
+
+  datasource:
+    url: jdbc:h2:mem:order_db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    
+  cloud:
+    stream:
+      bindings:
+        # 출력 바인딩 (함수-out-인덱스)
+        orderCreated-out-0:
+          destination: order.created-topic # RabbitMQ Exchange (토픽이름)
+          content-type: application/json
+      rabbit:
+        bindings:
+          orderCreated-out-0:
+            producer:
+              transacted: true

@@ -1,0 +1,1 @@
+INSERT INTO inventories (product_id, stock) VALUES ('chocolate', 100);

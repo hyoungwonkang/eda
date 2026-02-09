@@ -1,0 +1,16 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: notification-service
+  
+  cloud:
+    aws:
+      region:
+        static: ap-northeast-2
+      sqs:
+        listener:
+          max-concurrent-messages: 10  # 한 번에 처리할 최대 메시지 수 (스레드 수 제한)
+          max-messages-per-poll: 10  # 한 번 폴링할 때 가져올 최대 메시지 개수
+          poll-timeout: 20s  # 비용 절약을 위해 롱 폴링 설정 추천

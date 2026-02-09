@@ -4,65 +4,82 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
-
-import lombok.RequiredArgsConstructor;
-
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.common.dto.OrderCreatedRequest;
 import com.example.common.dto.event.OrderCreatedEvent;
+import com.example.order.client.InventoryClient;
 import com.example.order.entity.Order;
 import com.example.order.entity.OrderStatus;
-import com.example.order.repository.OrderRespository;
+import com.example.order.repository.OrderRepository;
 
-import org.springframework.cloud.stream.function.StreamBridge;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
-    
-    // 이벤트 메시지 발행 도구 StreamBridge 주입
-    private final StreamBridge streamBridge;
 
-    // DB 접근을 위한 OrderRepository 주입
-    private final OrderRespository orderRespository;
+    // JPA Repository
+    private final OrderRepository orderRepository;
+
+    // SqsTemplate: AWS SQS와 직접 통신
+    private final SqsTemplate sqsTemplate;
+
+    // InventoryClient: inventory-service와 동기 통신
+    private final InventoryClient inventoryClient;
 
     @Transactional
     public String createOrder(OrderCreatedRequest request) {
-        // 주문 ID
-        String orderId = UUID.randomUUID().toString();
-
-        // DB 주문 저장 필요
-        Order newOrder = Order.builder()
-            .orderId(orderId)
-            .productId(request.productId())
-            .quantity(request.quantity())
-            .orderStatus(OrderStatus.PENDING)
-            .build();
-
-        orderRespository.save(newOrder);
-
-        // 주문 생성 이벤트 메시지 생성
-        OrderCreatedEvent event = new OrderCreatedEvent(
-            request.productId(),
-            orderId,
-            request.quantity(),
-            LocalDateTime.now());
-        streamBridge.send("orderCreated-out-0", event);
-
-        // 반환
-        return orderId;
+    // 가장 먼저 재고부터 확인
+    Integer currentStock = inventoryClient.getStock(request.productId());
+    if (currentStock < request.quantity()) {
+        throw new RuntimeException("Order Fail: Out of stock");  // 컨트롤러로 예외 던짐
     }
 
+    // 주문 아이디 생성
+    String orderId = UUID.randomUUID().toString();
+
+    // 주문 저장 로직 (DB에 PENDING 상태로 저장)
+    Order order = Order.builder()
+        .orderId(orderId)
+        .productId(request.productId())
+        .quantity(request.quantity())
+        .orderStatus(OrderStatus.PENDING)
+        .build();
+    orderRepository.save(order);
+
+    // 주문 생성 이벤트 객체 생성
+    OrderCreatedEvent event = new OrderCreatedEvent(
+        orderId,
+        request.productId(),
+        request.quantity(),
+        LocalDateTime.now()
+    );
+
+    // 주문 생성 이벤트 발행
+    sqsTemplate.send(to -> to
+        .queue("order-events")
+        .payload(event)
+    );
+    log.info("Sent Event to SQS: {}", event);
+
+    return orderId;
+    }
+
+    @Transactional
     public void completeOrder(String orderId) {
-        Order foundOrder = orderRespository.findById(orderId)
+        Order foundOrder = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Order not found"));
-        foundOrder.complete();
+        foundOrder.complete(); // Dirty Checking
     }
 
+    @Transactional
     public void cancelOrder(String orderId) {
-        Order foundOrder = orderRespository.findById(orderId)
+        Order foundOrder = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Order not found"));
-        foundOrder.cancel();
+        foundOrder.cancel(); // Dirty Checking
     }
 }

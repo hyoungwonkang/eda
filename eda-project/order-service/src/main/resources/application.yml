@@ -2,30 +2,30 @@ server:
   port: 8081
 
 spring:
+  application:
+    name: order-service
+  
+  cloud:
+    aws:
+      region:
+        static: ap-northeast-2
+      sqs:
+        listener:
+          max-concurrent-messages: 10  # 한 번에 처리할 최대 메시지 수 (스레드 수 제한)
+          max-messages-per-poll: 10  # 한 번 폴링할 때 가져올 최대 메시지 개수
+          poll-timeout: 20s  # 비용 절약을 위해 롱 폴링 설정 추천
 
+  # H2 DB 설정
   datasource:
-    url: jdbc:h2:mem:order_db
+    url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
     username: sa
     password:
   h2:
     console:
-      enabled: true
-      path: /h2-console
+      enabled: true       # 콘솔 사용 허용
+      path: /h2-console   # 접속 경로 (기본값: /h2-console)
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: update # 엔티티 기반 테이블 자동 생성
     show-sql: true
-    
-  cloud:
-    stream:
-      bindings:
-        # 출력 바인딩 (함수-out-인덱스)
-        orderCreated-out-0:
-          destination: order.created-topic # RabbitMQ Exchange (토픽이름)
-          content-type: application/json
-      rabbit:
-        bindings:
-          orderCreated-out-0:
-            producer:
-              transacted: true

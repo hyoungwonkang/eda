@@ -5,15 +5,15 @@ dependencies {
   // Spring Boot Starter Web
   implementation 'org.springframework.boot:spring-boot-starter-web'
 
-  // Spring Cloud Stream
-  implementation 'org.springframework.cloud:spring-cloud-stream'
-  
-  // Spring Cloud Stream RabbitMQ Binder
-  implementation 'org.springframework.cloud:spring-cloud-stream-binder-rabbit'
-  
   // Spring Boot Starter Data JPA
   implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
   // H2 Database
   runtimeOnly 'com.h2database:h2'
+
+  // Spring Cloud Starter OpenFeign
+  implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+
+  // AWS SQS Starter
+  implementation 'io.awspring.cloud:spring-cloud-aws-starter-sqs:3.1.0'
 }

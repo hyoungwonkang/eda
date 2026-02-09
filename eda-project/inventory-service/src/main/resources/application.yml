@@ -2,35 +2,31 @@ server:
   port: 8082
 
 spring:
+  application:
+    name: inventory-service
+  
+  cloud:
+    aws:
+      region:
+        static: ap-northeast-2
+      sqs:
+        listener:
+          max-concurrent-messages: 10  # 한 번에 처리할 최대 메시지 수 (스레드 수 제한)
+          max-messages-per-poll: 10  # 한 번 폴링할 때 가져올 최대 메시지 개수
+          poll-timeout: 20s  # 비용 절약을 위해 롱 폴링 설정 추천
 
+  # H2 DB 설정
   datasource:
-    url: jdbc:h2:mem:inventory_db
+    url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
     username: sa
     password:
   h2:
     console:
-      enabled: true
-      path: /h2-console
+      enabled: true       # 콘솔 사용 허용
+      path: /h2-console   # 접속 경로 (기본값: /h2-console)
   jpa:
-    defer-datasource-initialization: true # 엔티티로 테이블을 생성한 후에 data.sql 실행
+    defer-datasource-initialization: true  # 테이블 생성 뒤 data.sql 실행
     hibernate:
-      ddl-auto: update
+      ddl-auto: update # 엔티티 기반 테이블 자동 생성
     show-sql: true
-    
-  cloud:
-    # 이벤트 메시지 처리 함수 (메서드 = 빈 이름)
-    function:
-      definition: processInventory
-    stream:
-      bindings:
-        # 입력 바인딩 (함수이름-in-인덱스)
-        processInventory-in-0:
-          destination: order.created-topic # Producer가 메시지를 발행한 토픽
-          group: inventory-group # Consumer는 반드시 그룹이 필요 (LB 및 데이터 유실 방지)
-
-        inventory-reserved-out-0:
-          destination: inventory-success-topic
-
-        inventory-failed-out-0:
-          destination: inventory-failure-topic

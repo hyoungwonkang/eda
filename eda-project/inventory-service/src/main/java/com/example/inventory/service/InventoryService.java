@@ -12,6 +12,12 @@ import lombok.RequiredArgsConstructor;
 public class InventoryService {
     private final InventoryRepository inventoryRepository;
 
+    public Integer getStock(String productId) {
+        Inventory foundInventory = inventoryRepository.findById(productId)
+            .orElseThrow(() -> new RuntimeException("Inventory not found"));
+        return foundInventory.getStock();
+    }
+
     public void decreaseStock(String productId, Integer quantity) {
         Inventory foundInventory = inventoryRepository.findById(productId)
             .orElseThrow(() -> new RuntimeException("Inventory not found"));
